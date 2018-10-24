@@ -17,7 +17,6 @@
 /* eslint indent: ["error", 4, { "outerIIFEBody": 0 }] */
 
 (function() { // BEGIN LOCAL_SCOPE
-
 var BASIC_TIMER_INTERVAL = 50; // 50ms = 20hz
 var OVERLAY_WIDTH = 1920;
 var OVERLAY_HEIGHT = 1080;
@@ -34,12 +33,12 @@ var AVATAR_MOVE_FOR_ACTIVE_DISTANCE = 0.8; // meters -- no longer away if avatar
 var CAMERA_MATRIX = -7;
 
 var OVERLAY_DATA_HMD = {
-    localPosition: {x: 0, y: 0, z: -1 * MyAvatar.sensorToWorldScale},
-    localRotation: {x: 0, y: 0, z: 0, w: 1},
+    localPosition: { x: 0, y: 0, z: -1 * MyAvatar.sensorToWorldScale },
+    localRotation: { x: 0, y: 0, z: 0, w: 1 },
     width: OVERLAY_WIDTH,
     height: OVERLAY_HEIGHT,
     url: Script.resolvePath("assets/images/Overlay-Viz-blank.png"),
-    color: {red: 255, green: 255, blue: 255},
+    color: { red: 255, green: 255, blue: 255 },
     alpha: 1,
     scale: 2 * MyAvatar.sensorToWorldScale,
     emissive: true,
@@ -56,7 +55,7 @@ var AWAY_INTRO = {
     endFrame: 83.0
 };
 
-// MAIN CONTROL
+    // MAIN CONTROL
 var isEnabled = true;
 var wasMuted; // unknonwn?
 var isAway = false; // we start in the un-away state
@@ -75,10 +74,10 @@ var _animation = AnimationCache.prefetch(AWAY_INTRO.url);
 
 function playAwayAnimation() {
     MyAvatar.overrideAnimation(AWAY_INTRO.url,
-            AWAY_INTRO.playbackRate,
-            AWAY_INTRO.loopFlag,
-            AWAY_INTRO.startFrame,
-            AWAY_INTRO.endFrame);
+        AWAY_INTRO.playbackRate,
+        AWAY_INTRO.loopFlag,
+        AWAY_INTRO.startFrame,
+        AWAY_INTRO.endFrame);
 }
 
 function stopAwayAnimation() {
@@ -111,8 +110,8 @@ function showOverlay() {
 }
 
 function hideOverlay() {
-    Overlays.editOverlay(overlay, {visible: false});
-    Overlays.editOverlay(overlayHMD, {visible: false});
+    Overlays.editOverlay(overlay, { visible: false });
+    Overlays.editOverlay(overlayHMD, { visible: false });
 }
 
 hideOverlay();
@@ -128,7 +127,7 @@ function maybeMoveOverlay() {
         if (HMD.active) {
 
             var sensorScaleFactor = MyAvatar.sensorToWorldScale;
-            var localPosition = {x: 0, y: 0, z: -1 * sensorScaleFactor};
+            var localPosition = { x: 0, y: 0, z: -1 * sensorScaleFactor };
             Overlays.editOverlay(overlayHMD, { visible: true, localPosition: localPosition, scale: 2 * sensorScaleFactor });
 
             // make sure desktop version is hidden
@@ -153,7 +152,7 @@ function goAway(fromStartup) {
     if (!isEnabled || isAway) {
         return;
     }
-    
+
     // If we're entering away mode from some other state than startup, then we create our move timer immediately.
     // However if we're just stating up, we need to delay this process so that we don't think the initial teleport
     // is actually a move.
@@ -165,7 +164,7 @@ function goAway(fromStartup) {
             avatarMovedInterval = Script.setInterval(ifAvatarMovedGoActive, BASIC_TIMER_INTERVAL);
         }, WAIT_FOR_MOVE_ON_STARTUP);
     }
-    
+
     UserActivityLogger.toggledAway(true);
     MyAvatar.isAway = true;
 }
@@ -192,7 +191,7 @@ function setAwayProperties() {
     if (!wasMuted) {
         Audio.muted = !Audio.muted;
     }
-    MyAvatar.setEnableMeshVisible(false);  // just for our own display, without changing point of view
+    MyAvatar.setEnableMeshVisible(false); // just for our own display, without changing point of view
     playAwayAnimation(); // animation is still seen by others
     showOverlay();
 
@@ -243,7 +242,7 @@ function setActiveProperties() {
 }
 
 function maybeGoActive(event) {
-    if (event.isAutoRepeat) {  // isAutoRepeat is true when held down (or when Windows feels like it)
+    if (event.isAutoRepeat) { // isAutoRepeat is true when held down (or when Windows feels like it)
         return;
     }
     if (!isAway && (event.text === 'ESC')) {
@@ -313,7 +312,7 @@ var handleMessage = function(channel, message, sender) {
 Messages.subscribe(CHANNEL_AWAY_ENABLE);
 Messages.messageReceived.connect(handleMessage);
 
-var maybeIntervalTimer = Script.setInterval(function(){
+var maybeIntervalTimer = Script.setInterval(function() {
     maybeMoveOverlay();
     maybeGoAway();
 }, BASIC_TIMER_INTERVAL);
@@ -338,7 +337,7 @@ eventMapping.from(Controller.Standard.Back).peek().to(goActive);
 eventMapping.from(Controller.Standard.Start).peek().to(goActive);
 Controller.enableMapping(eventMappingName);
 
-Script.scriptEnding.connect(function () {
+Script.scriptEnding.connect(function() {
     Script.clearInterval(maybeIntervalTimer);
     goActive();
     Controller.disableMapping(eventMappingName);
@@ -346,6 +345,7 @@ Script.scriptEnding.connect(function () {
     Controller.keyPressEvent.disconnect(maybeGoActive);
     Messages.messageReceived.disconnect(handleMessage);
     Messages.unsubscribe(CHANNEL_AWAY_ENABLE);
+    _animation.release();
 });
 
 if (HMD.active && !HMD.mounted) {

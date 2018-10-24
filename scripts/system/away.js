@@ -49,7 +49,7 @@ var OVERLAY_DATA_HMD = {
 };
 
 var AWAY_INTRO = {
-    url: "http://hifi-content.s3.amazonaws.com/ozan/dev/anim/standard_anims_160127/kneel.fbx",
+    url: Script.resolvePath("assets/animations/kneel.fbx"),
     playbackRate: 30.0,
     loopFlag: false,
     startFrame: 0.0,

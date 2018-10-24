@@ -35,8 +35,8 @@ var DEFAULT_SCRIPTS_COMBINED = [
     "system/miniTablet.js"
 ];
 var DEFAULT_SCRIPTS_SEPARATE = [
-    "system/controllers/controllerScripts.js",
-    //"system/chat.js"
+    // "system/chat.js",
+    "system/controllers/controllerScripts.js"
 ];
 
 if (Window.interstitialModeEnabled) {
@@ -64,7 +64,7 @@ if (Menu.menuExists(MENU_CATEGORY) && !Menu.menuItemExists(MENU_CATEGORY, MENU_I
         menuName: MENU_CATEGORY,
         menuItemName: MENU_ITEM,
         isCheckable: true,
-        isChecked: previousSetting,
+        isChecked: previousSetting
     });
 }
 

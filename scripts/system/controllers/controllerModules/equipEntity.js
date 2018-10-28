@@ -19,7 +19,7 @@ Script.include("/~/system/libraries/controllers.js");
 Script.include("/~/system/libraries/cloneEntityUtils.js");
 
 
-var DEFAULT_SPHERE_MODEL_URL = "http://hifi-content.s3.amazonaws.com/alan/dev/equip-Fresnel-3.fbx";
+var DEFAULT_SPHERE_MODEL_URL = Script.resolvePath("../../assets/models/equip-Fresnel-3.fbx");
 var EQUIP_SPHERE_SCALE_FACTOR = 0.65;
 
 

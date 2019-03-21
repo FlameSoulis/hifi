@@ -53,6 +53,14 @@ using ColorType = glm::vec3;
 
 const int MAX_NUM_PIXELS_FOR_FBX_TEXTURE = 2048 * 2048;
 
+// The version of the Draco mesh binary data itself. See also: FBX_DRACO_MESH_VERSION in FBX.h
+static const int DRACO_MESH_VERSION = 2;
+
+static const int DRACO_BEGIN_CUSTOM_HIFI_ATTRIBUTES = 1000;
+static const int DRACO_ATTRIBUTE_MATERIAL_ID = DRACO_BEGIN_CUSTOM_HIFI_ATTRIBUTES;
+static const int DRACO_ATTRIBUTE_TEX_COORD_1 = DRACO_BEGIN_CUSTOM_HIFI_ATTRIBUTES + 1;
+static const int DRACO_ATTRIBUTE_ORIGINAL_INDEX = DRACO_BEGIN_CUSTOM_HIFI_ATTRIBUTES + 2;
+
 // High Fidelity Model namespace
 namespace hfm {
 
@@ -273,6 +281,15 @@ public:
     {}
 };
 
+class FlowData {
+public:
+    FlowData() {};
+    QVariantMap _physicsConfig;
+    QVariantMap _collisionsConfig;
+    bool shouldInitFlow() const { return _physicsConfig.size() > 0; }
+    bool shouldInitCollisions() const { return _collisionsConfig.size() > 0; }
+};
+
 /// The runtime model format.
 class Model {
 public:
@@ -319,6 +336,7 @@ public:
     QList<QString> blendshapeChannelNames;
 
     QMap<int, glm::quat> jointRotationOffsets;
+    FlowData flowData;
 };
 
 };
@@ -343,6 +361,7 @@ typedef hfm::Mesh HFMMesh;
 typedef hfm::AnimationFrame HFMAnimationFrame;
 typedef hfm::Light HFMLight;
 typedef hfm::Model HFMModel;
+typedef hfm::FlowData FlowData;
 
 Q_DECLARE_METATYPE(HFMAnimationFrame)
 Q_DECLARE_METATYPE(QVector<HFMAnimationFrame>)

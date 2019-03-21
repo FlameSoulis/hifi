@@ -19,6 +19,8 @@
 
 #include "GLMHelpers.h"
 
+#include "DeferredLightingEffect.h"
+
 using namespace render;
 using namespace render::entities;
 
@@ -160,6 +162,7 @@ void TextEntityRenderer::doRender(RenderArgs* args) {
     glm::vec4 backgroundColor;
     Transform modelTransform;
     glm::vec3 dimensions;
+    bool layered;
     withReadLock([&] {
         modelTransform = _renderTransform;
         dimensions = _dimensions;
@@ -169,6 +172,7 @@ void TextEntityRenderer::doRender(RenderArgs* args) {
         textColor = EntityRenderer::calculatePulseColor(textColor, _pulseProperties, _created);
         backgroundColor = glm::vec4(_backgroundColor, fadeRatio * _backgroundAlpha);
         backgroundColor = EntityRenderer::calculatePulseColor(backgroundColor, _pulseProperties, _created);
+        layered = _renderLayer != RenderLayer::WORLD;
     });
 
     // Render background
@@ -180,6 +184,11 @@ void TextEntityRenderer::doRender(RenderArgs* args) {
     Q_ASSERT(args->_batch);
     gpu::Batch& batch = *args->_batch;
 
+    // FIXME: we need to find a better way of rendering text so we don't have to do this
+    if (layered) {
+        DependencyManager::get<DeferredLightingEffect>()->setupKeyLightBatch(args, batch);
+    }
+
     auto transformToTopLeft = modelTransform;
     transformToTopLeft.setRotation(EntityItem::getBillboardRotation(transformToTopLeft.getTranslation(), transformToTopLeft.getRotation(), _billboardMode, args->getViewFrustum().getPosition()));
     transformToTopLeft.postTranslate(dimensions * glm::vec3(-0.5f, 0.5f, 0.0f)); // Go to the top left
@@ -188,7 +197,7 @@ void TextEntityRenderer::doRender(RenderArgs* args) {
     if (backgroundColor.a > 0.0f) {
         batch.setModelTransform(transformToTopLeft);
         auto geometryCache = DependencyManager::get<GeometryCache>();
-        geometryCache->bindSimpleProgram(batch, false, backgroundColor.a < 1.0f, false, false, false);
+        geometryCache->bindSimpleProgram(batch, false, backgroundColor.a < 1.0f, false, false, false, true, layered);
         geometryCache->renderQuad(batch, minCorner, maxCorner, backgroundColor, _geometryID);
     }
 
@@ -199,7 +208,11 @@ void TextEntityRenderer::doRender(RenderArgs* args) {
         batch.setModelTransform(transformToTopLeft);
 
         glm::vec2 bounds = glm::vec2(dimensions.x - (_leftMargin + _rightMargin), dimensions.y - (_topMargin + _bottomMargin));
-        _textRenderer->draw(batch, _leftMargin / scale, -_topMargin / scale, _text, textColor, bounds / scale);
+        _textRenderer->draw(batch, _leftMargin / scale, -_topMargin / scale, _text, textColor, bounds / scale, layered);
+    }
+
+    if (layered) {
+        DependencyManager::get<DeferredLightingEffect>()->unsetKeyLightBatch(batch);
     }
 }
 

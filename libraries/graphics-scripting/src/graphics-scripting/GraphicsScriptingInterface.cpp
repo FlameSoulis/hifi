@@ -297,10 +297,6 @@ MeshPointer GraphicsScriptingInterface::getMeshPointer(scriptable::ScriptableMes
 
 namespace {
     QVector<int> metaTypeIds{
-        qRegisterMetaType<glm::uint32>("uint32"),
-        qRegisterMetaType<glm::uint32>("glm::uint32"),
-        qRegisterMetaType<QVector<glm::uint32>>(),
-        qRegisterMetaType<QVector<glm::uint32>>("QVector<uint32>"),
         qRegisterMetaType<scriptable::ScriptableMeshes>(),
         qRegisterMetaType<scriptable::ScriptableMeshes>("ScriptableMeshes"),
         qRegisterMetaType<scriptable::ScriptableMeshes>("scriptable::ScriptableMeshes"),
@@ -424,16 +420,28 @@ namespace scriptable {
             obj.setProperty("opacityMap", material.opacityMap);
         }
 
+        if (hasPropertyFallthroughs && material.propertyFallthroughs.at(graphics::MaterialKey::OPACITY_TRANSLUCENT_MAP_BIT | graphics::MaterialKey::OPACITY_MASK_MAP_BIT)) {
+            obj.setProperty("opacityMapMode", FALLTHROUGH);
+        } else if (material.key.getOpacityMapMode() != graphics::Material::DEFAULT_OPACITY_MAP_MODE) {
+            obj.setProperty("opacityMapMode", material.opacityMapMode);
+        }
+
+        if (hasPropertyFallthroughs && material.propertyFallthroughs.at(graphics::MaterialKey::OPACITY_CUTOFF_VAL_BIT)) {
+            obj.setProperty("opacityCutoff", FALLTHROUGH);
+        } else if (material.key.isOpacityCutoff()) {
+            obj.setProperty("opacityCutoff", material.opacityCutoff);
+        }
+
         if (hasPropertyFallthroughs && material.propertyFallthroughs.at(graphics::MaterialKey::OCCLUSION_MAP_BIT)) {
             obj.setProperty("occlusionMap", FALLTHROUGH);
         } else if (!material.occlusionMap.isEmpty()) {
             obj.setProperty("occlusionMap", material.occlusionMap);
         }
 
-        if (hasPropertyFallthroughs && material.propertyFallthroughs.at(graphics::MaterialKey::LIGHTMAP_MAP_BIT)) {
-            obj.setProperty("lightmapMap", FALLTHROUGH);
-        } else if (!material.lightmapMap.isEmpty()) {
-            obj.setProperty("lightmapMap", material.lightmapMap);
+        if (hasPropertyFallthroughs && material.propertyFallthroughs.at(graphics::MaterialKey::LIGHT_MAP_BIT)) {
+            obj.setProperty("lightMap", FALLTHROUGH);
+        } else if (!material.lightMap.isEmpty()) {
+            obj.setProperty("lightMap", material.lightMap);
         }
 
         if (hasPropertyFallthroughs && material.propertyFallthroughs.at(graphics::MaterialKey::SCATTERING_MAP_BIT)) {
@@ -470,9 +478,13 @@ namespace scriptable {
         // These need to be implemented, but set the fallthrough for now
         if (hasPropertyFallthroughs && material.propertyFallthroughs.at(graphics::Material::TEXCOORDTRANSFORM0)) {
             obj.setProperty("texCoordTransform0", FALLTHROUGH);
+        } else if (material.texCoordTransforms[0] != mat4()) {
+            obj.setProperty("texCoordTransform0", mat4toScriptValue(engine, material.texCoordTransforms[0]));
         }
         if (hasPropertyFallthroughs && material.propertyFallthroughs.at(graphics::Material::TEXCOORDTRANSFORM1)) {
             obj.setProperty("texCoordTransform1", FALLTHROUGH);
+        } else if (material.texCoordTransforms[1] != mat4()) {
+            obj.setProperty("texCoordTransform1", mat4toScriptValue(engine, material.texCoordTransforms[1]));
         }
         if (hasPropertyFallthroughs && material.propertyFallthroughs.at(graphics::Material::LIGHTMAP_PARAMS)) {
             obj.setProperty("lightmapParams", FALLTHROUGH);
@@ -528,7 +540,6 @@ namespace scriptable {
 }
 
 void GraphicsScriptingInterface::registerMetaTypes(QScriptEngine* engine) {
-    qScriptRegisterSequenceMetaType<QVector<glm::uint32>>(engine);
     qScriptRegisterSequenceMetaType<QVector<scriptable::ScriptableMaterialLayer>>(engine);
 
     scriptable::registerQPointerMetaType<scriptable::ScriptableModel>(engine);

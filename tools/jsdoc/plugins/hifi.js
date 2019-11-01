@@ -26,10 +26,9 @@ exports.handlers = {
             '../../assignment-client/src/octree',
             '../../interface/src',
             '../../interface/src/assets',
-            '../../interface/src/audio',
+            //'../../interface/src/audio', Exlude AudioScope API from output.
             '../../interface/src/avatar',
             '../../interface/src/commerce',
-            '../../interface/src/devices',
             '../../interface/src/java',
             '../../interface/src/networking',
             '../../interface/src/raypick',
@@ -48,19 +47,22 @@ exports.handlers = {
             '../../libraries/fbx/src',
             '../../libraries/graphics/src/graphics/',
             '../../libraries/graphics-scripting/src/graphics-scripting/',
+            '../../libraries/image/src/image',
             '../../libraries/input-plugins/src/input-plugins',
+            '../../libraries/material-networking/src/material-networking/',
             '../../libraries/midi/src',
             '../../libraries/model-networking/src/model-networking/',
             '../../libraries/networking/src',
             '../../libraries/octree/src',
             '../../libraries/physics/src',
+            '../../libraries/platform/src/platform/backend',
             '../../libraries/plugins/src/plugins',
             '../../libraries/pointers/src',
+            '../../libraries/render-utils/src',
             '../../libraries/script-engine/src',
             '../../libraries/shared/src',
             '../../libraries/shared/src/shared',
             '../../libraries/task/src/task',
-            '../../libraries/trackers/src/trackers',
             '../../libraries/ui/src',
             '../../libraries/ui/src/ui',
             '../../plugins/oculus/src',
@@ -107,6 +109,9 @@ exports.handlers = {
             if (e.doclet.hifiClientEntity) {
                 rows.push("Client Entity Scripts");
             }
+            if (e.doclet.hifiAvatar) {
+                rows.push("Avatar Scripts");
+            }
             if (e.doclet.hifiServerEntity) {
                 rows.push("Server Entity Scripts");
             }
@@ -118,25 +123,16 @@ exports.handlers = {
             if (rows.length > 0) {
                 var availableIn = "<p class='availableIn'><b>Supported Script Types:</b> " + rows.join(" &bull; ") + "</p>";
              
-                e.doclet.description = (e.doclet.description ? e.doclet.description : "") + availableIn;
+                e.doclet.description = availableIn + (e.doclet.description ? e.doclet.description : "");
             }            
+        }
+
+        if (e.doclet.kind === "function" && e.doclet.returns && e.doclet.returns[0].type
+                && e.doclet.returns[0].type.names[0] === "Signal") {
+            e.doclet.kind = "signal";
         }
     }
 };
-
-// Functions for adding @signal custom tag
-/** @private */
-function setDocletKindToTitle(doclet, tag) {
-    doclet.addTag( 'kind', tag.title );
-}
-
-function setDocletNameToValue(doclet, tag) {
-    if (tag.value && tag.value.description) { // as in a long tag
-        doclet.addTag('name', tag.value.description);
-    } else if (tag.text) { // or a short tag
-        doclet.addTag('name', tag.text);
-    }
-}
 
 // Define custom hifi tags here
 exports.defineTags = function (dictionary) {
@@ -155,6 +151,13 @@ exports.defineTags = function (dictionary) {
         }
     });
 
+    // @hifi-avatar-script
+    dictionary.defineTag("hifi-avatar", {
+        onTagged: function (doclet, tag) {
+            doclet.hifiAvatar = true;
+        }
+    });
+
     // @hifi-client-entity
     dictionary.defineTag("hifi-client-entity", {
         onTagged: function (doclet, tag) {
@@ -166,15 +169,6 @@ exports.defineTags = function (dictionary) {
     dictionary.defineTag("hifi-server-entity", {
         onTagged: function (doclet, tag) {
             doclet.hifiServerEntity = true;
-        }
-    });
-    
-    // @signal
-    dictionary.defineTag("signal", {
-        mustHaveValue: true,
-        onTagged: function(doclet, tag) {
-            setDocletKindToTitle(doclet, tag);
-            setDocletNameToValue(doclet, tag);
         }
     });
 

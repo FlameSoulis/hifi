@@ -343,6 +343,7 @@ public:
 
     class KtxStorage : public Storage {
     public:
+        KtxStorage(const storage::StoragePointer& storage);
         KtxStorage(const std::string& filename);
         KtxStorage(const cache::FilePointer& file);
         PixelsPointer getMipFace(uint16 level, uint8 face = 0) const override;
@@ -366,6 +367,7 @@ public:
         static std::vector<std::pair<std::shared_ptr<storage::FileStorage>, std::shared_ptr<std::mutex>>> _cachedKtxFiles;
         static std::mutex _cachedKtxFilesMutex;
 
+        storage::StoragePointer _storage;
         std::string _filename;
         cache::FilePointer _cacheEntry;
         std::atomic<uint8_t> _minMipLevelAvailable;
@@ -543,6 +545,7 @@ public:
     Size getStoredSize() const;
 
     void setStorage(std::unique_ptr<Storage>& newStorage);
+    void setKtxBacking(const storage::StoragePointer& storage);
     void setKtxBacking(const std::string& filename);
     void setKtxBacking(const cache::FilePointer& cacheEntry);
 
@@ -550,7 +553,7 @@ public:
     void setUsage(const Usage& usage) { _usage = usage; }
     Usage getUsage() const { return _usage; }
 
-    // For Cube Texture, it's possible to generate the irradiance spherical harmonics and make them availalbe with the texture
+    // For Cube Texture, it's possible to generate the irradiance spherical harmonics and make them available with the texture
     bool generateIrradiance(gpu::BackendTarget target);
     const SHPointer& getIrradiance(uint16 slice = 0) const { return _irradiance; }
     void overrideIrradiance(SHPointer irradiance) { _irradiance = irradiance; }

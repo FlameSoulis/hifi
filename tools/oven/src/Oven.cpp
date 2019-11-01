@@ -14,13 +14,14 @@
 #include <QtCore/QDebug>
 #include <QtCore/QThread>
 
-#include <image/Image.h>
+#include <image/TextureProcessing.h>
 
 #include <DependencyManager.h>
 #include <StatTracker.h>
 #include <ResourceManager.h>
 #include <ResourceRequestObserver.h>
 #include <ResourceCache.h>
+#include <material-networking/MaterialCache.h>
 #include <material-networking/TextureCache.h>
 #include <hfm/ModelFormatRegistry.h>
 #include <FBXSerializer.h>
@@ -42,6 +43,7 @@ Oven::Oven() {
     DependencyManager::set<ResourceRequestObserver>();
     DependencyManager::set<ResourceCacheSharedItems>();
     DependencyManager::set<TextureCache>();
+    DependencyManager::set<MaterialCache>();
 
     MaterialBaker::setNextOvenWorkerThreadOperator([] {
         return Oven::instance().getNextWorkerThread();

@@ -56,6 +56,7 @@ EntityScriptingInterface::EntityScriptingInterface(bool bidOnSimulationOwnership
     connect(nodeList.data(), &NodeList::canRezCertifiedChanged, this, &EntityScriptingInterface::canRezCertifiedChanged);
     connect(nodeList.data(), &NodeList::canRezTmpCertifiedChanged, this, &EntityScriptingInterface::canRezTmpCertifiedChanged);
     connect(nodeList.data(), &NodeList::canWriteAssetsChanged, this, &EntityScriptingInterface::canWriteAssetsChanged);
+    connect(nodeList.data(), &NodeList::canGetAndSetPrivateUserDataChanged, this, &EntityScriptingInterface::canGetAndSetPrivateUserDataChanged);
 
     auto& packetReceiver = nodeList->getPacketReceiver();
     packetReceiver.registerListener(PacketType::EntityScriptCallMethod, this, "handleEntityScriptCallMethodPacket");
@@ -105,6 +106,11 @@ bool EntityScriptingInterface::canWriteAssets() {
 bool EntityScriptingInterface::canReplaceContent() {
     auto nodeList = DependencyManager::get<NodeList>();
     return nodeList->getThisNodeCanReplaceContent();
+}
+
+bool EntityScriptingInterface::canGetAndSetPrivateUserData() {
+    auto nodeList = DependencyManager::get<NodeList>();
+    return nodeList->getThisNodeCanGetAndSetPrivateUserData();
 }
 
 void EntityScriptingInterface::setEntityTree(EntityTreePointer elementTree) {
@@ -475,11 +481,15 @@ QUuid EntityScriptingInterface::addEntityInternal(const EntityItemProperties& pr
     _activityTracking.addedEntityCount++;
 
     auto nodeList = DependencyManager::get<NodeList>();
-    const auto sessionID = nodeList->getSessionUUID();
+    auto sessionID = nodeList->getSessionUUID();
 
     EntityItemProperties propertiesWithSimID = properties;
     propertiesWithSimID.setEntityHostType(entityHostType);
     if (entityHostType == entity::HostType::AVATAR) {
+        if (sessionID.isNull()) {
+            // null sessionID is unacceptable in this case
+            sessionID = AVATAR_SELF_ID;
+        }
         propertiesWithSimID.setOwningAvatarID(sessionID);
     } else if (entityHostType == entity::HostType::LOCAL) {
         // For now, local entities are always collisionless
@@ -656,7 +666,7 @@ QScriptValue EntityScriptingInterface::getMultipleEntityProperties(QScriptContex
     const int ARGUMENT_EXTENDED_DESIRED_PROPERTIES = 1;
 
     auto entityScriptingInterface = DependencyManager::get<EntityScriptingInterface>();
-    const auto entityIDs = qScriptValueToValue<QVector<QUuid>>(context->argument(ARGUMENT_ENTITY_IDS));
+    const auto entityIDs = qscriptvalue_cast<QVector<QUuid>>(context->argument(ARGUMENT_ENTITY_IDS));
     return entityScriptingInterface->getMultipleEntityPropertiesInternal(engine, entityIDs, context->argument(ARGUMENT_EXTENDED_DESIRED_PROPERTIES));
 }
 
@@ -706,7 +716,7 @@ QScriptValue EntityScriptingInterface::getMultipleEntityPropertiesInternal(QScri
         psuedoPropertyFlags.set(EntityPsuedoPropertyFlag::FlagsActive);
     }
 
-    EntityPropertyFlags desiredProperties = qScriptValueToValue<EntityPropertyFlags>(extendedDesiredProperties);
+    EntityPropertyFlags desiredProperties = qscriptvalue_cast<EntityPropertyFlags>(extendedDesiredProperties);
     bool needsScriptSemantics = desiredProperties.getHasProperty(PROP_POSITION) ||
         desiredProperties.getHasProperty(PROP_ROTATION) ||
         desiredProperties.getHasProperty(PROP_LOCAL_POSITION) ||
@@ -795,7 +805,7 @@ QUuid EntityScriptingInterface::editEntity(const QUuid& id, const EntityItemProp
             return;
         }
 
-        if (entity->isAvatarEntity() && entity->getOwningAvatarID() != sessionID) {
+        if (entity->isAvatarEntity() && entity->getOwningAvatarID() != sessionID && entity->getOwningAvatarID() != AVATAR_SELF_ID) {
             // don't edit other avatar's avatarEntities
             properties = EntityItemProperties();
             return;
@@ -1101,13 +1111,13 @@ void EntityScriptingInterface::handleEntityScriptCallMethodPacket(QSharedPointer
 
 void EntityScriptingInterface::onAddingEntity(EntityItem* entity) {
     if (entity->isWearable()) {
-        emit addingWearable(entity->getEntityItemID());
+        QMetaObject::invokeMethod(this, "addingWearable", Q_ARG(EntityItemID, entity->getEntityItemID()));
     }
 }
 
 void EntityScriptingInterface::onDeletingEntity(EntityItem* entity) {
     if (entity->isWearable()) {
-        emit deletingWearable(entity->getEntityItemID());
+        QMetaObject::invokeMethod(this, "deletingWearable", Q_ARG(EntityItemID, entity->getEntityItemID()));
     }
 }
 
@@ -2196,14 +2206,7 @@ bool EntityScriptingInterface::wantsHandControllerPointerEvents(const QUuid& id)
 }
 
 void EntityScriptingInterface::emitScriptEvent(const EntityItemID& entityID, const QVariant& message) {
-    if (_entityTree) {
-        _entityTree->withReadLock([&] {
-            EntityItemPointer entity = _entityTree->findEntityByEntityItemID(EntityItemID(entityID));
-            if (entity) {
-                entity->emitScriptEvent(message);
-            }
-        });
-    }
+    EntityTree::emitScriptEvent(entityID, message);
 }
 
 // TODO move this someplace that makes more sense...

@@ -13,12 +13,8 @@
 #define hifi_OBJBaker_h
 
 #include "Baker.h"
-#include "TextureBaker.h"
 #include "ModelBaker.h"
-
 #include "ModelBakingLoggingCategory.h"
-
-using TextureBakerThreadGetter = std::function<QThread*()>;
 
 using NodeID = qlonglong;
 
@@ -32,12 +28,10 @@ protected:
 
 private:
     void createFBXNodeTree(FBXNode& rootNode, const hfm::Model::Pointer& hfmModel, const hifi::ByteArray& dracoMesh);
-    void setMaterialNodeProperties(FBXNode& materialNode, QString material,  const hfm::Model::Pointer& hfmModel);
+    void setMaterialNodeProperties(FBXNode& materialNode, QString material, const hfm::Model::Pointer& hfmModel);
     NodeID nextNodeID() { return _nodeID++; }
-
 
     NodeID _nodeID { 0 };
     std::vector<NodeID> _materialIDs;
-    std::vector<std::pair<NodeID, int>> _mapTextureMaterial;
 };
 #endif // hifi_OBJBaker_h

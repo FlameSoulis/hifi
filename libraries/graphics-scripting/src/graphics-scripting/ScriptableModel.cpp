@@ -15,7 +15,7 @@
 #include "GraphicsScriptingUtil.h"
 #include "ScriptableMesh.h"
 #include "graphics/Material.h"
-#include "image/Image.h"
+#include "image/TextureProcessing.h"
 
 // #define SCRIPTABLE_MESH_DEBUG 1
 
@@ -26,6 +26,7 @@ scriptable::ScriptableMaterial& scriptable::ScriptableMaterial::operator=(const 
     roughness = material.roughness;
     metallic = material.metallic;
     scattering = material.scattering;
+    opacityCutoff = material.opacityCutoff;
     unlit = material.unlit;
     emissive = material.emissive;
     albedo = material.albedo;
@@ -39,8 +40,10 @@ scriptable::ScriptableMaterial& scriptable::ScriptableMaterial::operator=(const 
     normalMap = material.normalMap;
     bumpMap = material.bumpMap;
     occlusionMap = material.occlusionMap;
-    lightmapMap = material.lightmapMap;
+    lightMap = material.lightMap;
     scatteringMap = material.scatteringMap;
+    opacityMapMode = material.opacityMapMode;
+
 
     defaultFallthrough = material.defaultFallthrough;
     propertyFallthroughs = material.propertyFallthroughs;
@@ -55,9 +58,12 @@ scriptable::ScriptableMaterial::ScriptableMaterial(const graphics::MaterialPoint
         name = material->getName().c_str();
         model = material->getModel().c_str();
         opacity = material->getOpacity();
+
+        opacityMapMode = QString(graphics::MaterialKey::getOpacityMapModeName(material->getOpacityMapMode()).c_str());
         roughness = material->getRoughness();
         metallic = material->getMetallic();
         scattering = material->getScattering();
+        opacityCutoff = material->getOpacityCutoff();
         unlit = material->isUnlit();
         emissive = material->getEmissive();
         albedo = material->getAlbedo();
@@ -110,14 +116,18 @@ scriptable::ScriptableMaterial::ScriptableMaterial(const graphics::MaterialPoint
             occlusionMap = map->getTextureSource()->getUrl().toString();
         }
 
-        map = material->getTextureMap(graphics::Material::MapChannel::LIGHTMAP_MAP);
+        map = material->getTextureMap(graphics::Material::MapChannel::LIGHT_MAP);
         if (map && map->getTextureSource()) {
-            lightmapMap = map->getTextureSource()->getUrl().toString();
+            lightMap = map->getTextureSource()->getUrl().toString();
         }
 
         map = material->getTextureMap(graphics::Material::MapChannel::SCATTERING_MAP);
         if (map && map->getTextureSource()) {
             scatteringMap = map->getTextureSource()->getUrl().toString();
+        }
+
+        for (int i = 0; i < graphics::Material::NUM_TEXCOORD_TRANSFORMS; i++) {
+            texCoordTransforms[i] = material->getTexCoordTransform(i);
         }
     }
 }

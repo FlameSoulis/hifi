@@ -52,6 +52,8 @@
 #include <WebSocketServerClass.h>
 #include <EntityScriptingInterface.h> // TODO: consider moving to scriptengine.h
 
+#include <hfm/ModelFormatRegistry.h>
+
 #include "entities/AssignmentParentFinder.h"
 #include "AssignmentDynamicFactory.h"
 #include "RecordingScriptingInterface.h"
@@ -82,7 +84,7 @@ Agent::Agent(ReceivedMessage& message) :
     DependencyManager::get<EntityScriptingInterface>()->setPacketSender(&_entityEditSender);
 
     DependencyManager::set<ResourceManager>();
-    DependencyManager::set<PluginManager>();
+    DependencyManager::set<PluginManager>()->instantiate();
 
     DependencyManager::registerInheritance<SpatialParentFinder, AssignmentParentFinder>();
 
@@ -98,6 +100,9 @@ Agent::Agent(ReceivedMessage& message) :
 
     DependencyManager::set<RecordingScriptingInterface>();
     DependencyManager::set<UsersScriptingInterface>();
+
+    DependencyManager::set<ModelFormatRegistry>();
+    DependencyManager::set<ModelCache>();
 
     // Needed to ensure the creation of the DebugDraw instance on the main thread
     DebugDraw::getInstance();
@@ -371,7 +376,6 @@ void Agent::executeScript() {
         // setup an Avatar for the script to use
         auto scriptedAvatar = DependencyManager::get<ScriptableAvatar>();
         scriptedAvatar->setID(getSessionUUID());
-        scriptedAvatar->setForceFaceTrackerConnected(true);
 
         // call model URL setters with empty URLs so our avatar, if user, will have the default models
         scriptedAvatar->setSkeletonModelURL(QUrl());
@@ -428,7 +432,7 @@ void Agent::executeScript() {
 
         using namespace recording;
         static const FrameType AUDIO_FRAME_TYPE = Frame::registerFrameType(AudioConstants::getAudioFrameName());
-        Frame::registerFrameHandler(AUDIO_FRAME_TYPE, [this, &scriptedAvatar](Frame::ConstPointer frame) {
+        Frame::registerFrameHandler(AUDIO_FRAME_TYPE, [this, &player, &scriptedAvatar](Frame::ConstPointer frame) {
             if (_shouldMuteRecordingAudio) {
                 return;
             }
@@ -437,9 +441,18 @@ void Agent::executeScript() {
 
             QByteArray audio(frame->data);
 
+            int16_t* samples = reinterpret_cast<int16_t*>(audio.data());
+            int numSamples = AudioConstants::NETWORK_FRAME_SAMPLES_PER_CHANNEL;
+
+            auto volume = player->getVolume();
+            if (volume >= 0.0f && volume < 1.0f) {
+                int32_t fract = (int32_t)(volume * (float)(1 << 16));   // Q16
+                for (int i = 0; i < numSamples; i++) {
+                    samples[i] = (fract * (int32_t)samples[i]) >> 16;
+                }
+            }
+
             if (_isNoiseGateEnabled) {
-                int16_t* samples = reinterpret_cast<int16_t*>(audio.data());
-                int numSamples = AudioConstants::NETWORK_FRAME_SAMPLES_PER_CHANNEL;
                 _audioGate.render(samples, samples, numSamples);
             }
 
@@ -506,6 +519,7 @@ void Agent::executeScript() {
 
         DependencyManager::set<AssignmentParentFinder>(_entityViewer.getTree());
 
+        DependencyManager::get<ScriptEngines>()->runScriptInitializers(_scriptEngine);
         _scriptEngine->run();
 
         Frame::clearFrameHandler(AUDIO_FRAME_TYPE);
@@ -818,6 +832,9 @@ void Agent::aboutToFinish() {
     DependencyManager::get<EntityScriptingInterface>()->setEntityTree(nullptr);
 
     DependencyManager::get<ResourceManager>()->cleanup();
+
+    DependencyManager::destroy<ModelFormatRegistry>();
+    DependencyManager::destroy<ModelCache>();
 
     DependencyManager::destroy<PluginManager>();
 

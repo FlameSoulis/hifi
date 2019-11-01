@@ -27,7 +27,7 @@ namespace baker {
     class GetModelPartsTask {
     public:
         using Input = hfm::Model::Pointer;
-        using Output = VaryingSet6<std::vector<hfm::Mesh>, hifi::URL, baker::MeshIndicesToModelNames, baker::BlendshapesPerMesh, QHash<QString, hfm::Material>, std::vector<hfm::Joint>>;
+        using Output = VaryingSet5<std::vector<hfm::Mesh>, hifi::URL, baker::MeshIndicesToModelNames, baker::BlendshapesPerMesh, std::vector<hfm::Joint>>;
         using JobModel = Job::ModelIO<GetModelPartsTask, Input, Output>;
 
         void run(const BakeContextPointer& context, const Input& input, Output& output) {
@@ -40,8 +40,7 @@ namespace baker {
             for (int i = 0; i < hfmModelIn->meshes.size(); i++) {
                 blendshapesPerMesh.push_back(hfmModelIn->meshes[i].blendshapes.toStdVector());
             }
-            output.edit4() = hfmModelIn->materials;
-            output.edit5() = hfmModelIn->joints.toStdVector();
+            output.edit4() = hfmModelIn->joints.toStdVector();
         }
     };
 
@@ -113,6 +112,7 @@ namespace baker {
             hfmModelOut->jointRotationOffsets = input.get3();
             hfmModelOut->jointIndices = input.get4();
             hfmModelOut->flowData = input.get5();
+            hfmModelOut->computeKdops();
             output = hfmModelOut;
         }
     };
@@ -120,7 +120,7 @@ namespace baker {
     class BakerEngineBuilder {
     public:
         using Input = VaryingSet3<hfm::Model::Pointer, hifi::VariantHash, hifi::URL>;
-        using Output = VaryingSet4<hfm::Model::Pointer, MaterialMapping, std::vector<hifi::ByteArray>, std::vector<std::vector<hifi::ByteArray>>>;
+        using Output = VaryingSet5<hfm::Model::Pointer, MaterialMapping, std::vector<hifi::ByteArray>, std::vector<bool>, std::vector<std::vector<hifi::ByteArray>>>;
         using JobModel = Task::ModelIO<BakerEngineBuilder, Input, Output>;
         void build(JobModel& model, const Varying& input, Varying& output) {
             const auto& hfmModelIn = input.getN<Input>(0);
@@ -133,17 +133,16 @@ namespace baker {
             const auto url = modelPartsIn.getN<GetModelPartsTask::Output>(1);
             const auto meshIndicesToModelNames = modelPartsIn.getN<GetModelPartsTask::Output>(2);
             const auto blendshapesPerMeshIn = modelPartsIn.getN<GetModelPartsTask::Output>(3);
-            const auto materials = modelPartsIn.getN<GetModelPartsTask::Output>(4);
-            const auto jointsIn = modelPartsIn.getN<GetModelPartsTask::Output>(5);
+            const auto jointsIn = modelPartsIn.getN<GetModelPartsTask::Output>(4);
 
             // Calculate normals and tangents for meshes and blendshapes if they do not exist
             // Note: Normals are never calculated here for OBJ models. OBJ files optionally define normals on a per-face basis, so for consistency normals are calculated beforehand in OBJSerializer.
             const auto normalsPerMesh = model.addJob<CalculateMeshNormalsTask>("CalculateMeshNormals", meshesIn);
-            const auto calculateMeshTangentsInputs = CalculateMeshTangentsTask::Input(normalsPerMesh, meshesIn, materials).asVarying();
+            const auto calculateMeshTangentsInputs = CalculateMeshTangentsTask::Input(normalsPerMesh, meshesIn).asVarying();
             const auto tangentsPerMesh = model.addJob<CalculateMeshTangentsTask>("CalculateMeshTangents", calculateMeshTangentsInputs);
             const auto calculateBlendshapeNormalsInputs = CalculateBlendshapeNormalsTask::Input(blendshapesPerMeshIn, meshesIn).asVarying();
             const auto normalsPerBlendshapePerMesh = model.addJob<CalculateBlendshapeNormalsTask>("CalculateBlendshapeNormals", calculateBlendshapeNormalsInputs);
-            const auto calculateBlendshapeTangentsInputs = CalculateBlendshapeTangentsTask::Input(normalsPerBlendshapePerMesh, blendshapesPerMeshIn, meshesIn, materials).asVarying();
+            const auto calculateBlendshapeTangentsInputs = CalculateBlendshapeTangentsTask::Input(normalsPerBlendshapePerMesh, blendshapesPerMeshIn, meshesIn).asVarying();
             const auto tangentsPerBlendshapePerMesh = model.addJob<CalculateBlendshapeTangentsTask>("CalculateBlendshapeTangents", calculateBlendshapeTangentsInputs);
 
             // Build the graphics::MeshPointer for each hfm::Mesh
@@ -169,7 +168,8 @@ namespace baker {
             const auto buildDracoMeshInputs = BuildDracoMeshTask::Input(meshesIn, normalsPerMesh, tangentsPerMesh).asVarying();
             const auto buildDracoMeshOutputs = model.addJob<BuildDracoMeshTask>("BuildDracoMesh", buildDracoMeshInputs);
             const auto dracoMeshes = buildDracoMeshOutputs.getN<BuildDracoMeshTask::Output>(0);
-            const auto materialList = buildDracoMeshOutputs.getN<BuildDracoMeshTask::Output>(1);
+            const auto dracoErrors = buildDracoMeshOutputs.getN<BuildDracoMeshTask::Output>(1);
+            const auto materialList = buildDracoMeshOutputs.getN<BuildDracoMeshTask::Output>(2);
 
             // Parse flow data
             const auto flowData = model.addJob<ParseFlowDataTask>("ParseFlowData", mapping);
@@ -182,7 +182,7 @@ namespace baker {
             const auto buildModelInputs = BuildModelTask::Input(hfmModelIn, meshesOut, jointsOut, jointRotationOffsets, jointIndices, flowData).asVarying();
             const auto hfmModelOut = model.addJob<BuildModelTask>("BuildModel", buildModelInputs);
 
-            output = Output(hfmModelOut, materialMapping, dracoMeshes, materialList);
+            output = Output(hfmModelOut, materialMapping, dracoMeshes, dracoErrors, materialList);
         }
     };
 
@@ -213,7 +213,11 @@ namespace baker {
         return _engine->getOutput().get<BakerEngineBuilder::Output>().get2();
     }
 
-    std::vector<std::vector<hifi::ByteArray>> Baker::getDracoMaterialLists() const {
+    std::vector<bool> Baker::getDracoErrors() const {
         return _engine->getOutput().get<BakerEngineBuilder::Output>().get3();
+    }
+
+    std::vector<std::vector<hifi::ByteArray>> Baker::getDracoMaterialLists() const {
+        return _engine->getOutput().get<BakerEngineBuilder::Output>().get4();
     }
 };

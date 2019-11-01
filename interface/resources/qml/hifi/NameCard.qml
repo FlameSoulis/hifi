@@ -129,6 +129,7 @@ Item {
         height: 40
         // Anchors
         anchors.top: avatarImage.top
+        anchors.topMargin: avatarImage.visible ? 18 : 0;
         anchors.left: avatarImage.right
         anchors.leftMargin: avatarImage.visible ? 5 : 0;
         anchors.rightMargin: 5;
@@ -399,7 +400,8 @@ Item {
         size: 24;
         x: 120
         anchors.verticalCenter: nameCardConnectionInfoImage.verticalCenter
-        anchors.left: has3DHTML ? nameCardConnectionInfoText.right + 10 : avatarImage.right
+        anchors.left: has3DHTML ? nameCardConnectionInfoText.right : avatarImage.right
+        anchors.leftMargin: has3DHTML ? 10 : 0
     }
     MouseArea {
         anchors.fill:nameCardRemoveConnectionImage

@@ -104,6 +104,10 @@ Rectangle {
 	            if (loader.item.hasOwnProperty("gotoPreviousApp")) {
 	                loader.item.gotoPreviousApp = true;
 	            }
+
+                if (loader.item.hasOwnProperty("gotoPreviousAppFromScript")) {
+                    loader.item.gotoPreviousAppFromScript = true;
+                }
             });
         }
     }
@@ -117,7 +121,6 @@ Rectangle {
                 if (loader.item.hasOwnProperty("gotoPreviousApp")) {
                     loader.item.gotoPreviousApp = true;
                 }
-            
                 screenChanged("Web", url)
             });
         }
@@ -277,7 +280,7 @@ Rectangle {
                 } else {
                     console.log("newSource is of unknown type!");
                 }
-                
+
                 screenChanged(type, newSource);
 	        });
     	}

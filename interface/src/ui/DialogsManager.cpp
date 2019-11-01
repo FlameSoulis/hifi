@@ -156,10 +156,10 @@ void DialogsManager::hmdTools(bool showTools) {
         }
         _hmdToolsDialog->show();
         _hmdToolsDialog->raise();
+        qApp->getWindow()->activateWindow();
     } else {
         hmdToolsClosed();
     }
-    qApp->getWindow()->activateWindow();
 }
 
 void DialogsManager::hmdToolsClosed() {
@@ -184,15 +184,6 @@ void DialogsManager::toggleAddressBar() {
 void DialogsManager::setAddressBarVisible(bool addressBarVisible) {
     _addressBarVisible = addressBarVisible;
     emit addressBarShown(_addressBarVisible);
-}
-
-void DialogsManager::showTestingResults() {
-    if (!_testingDialog) {
-        _testingDialog = new TestingDialog(qApp->getWindow());
-        connect(_testingDialog, SIGNAL(closed()), _testingDialog, SLOT(deleteLater()));
-    }
-    _testingDialog->show();
-    _testingDialog->raise();
 }
 
 void DialogsManager::showDomainConnectionDialog() {
